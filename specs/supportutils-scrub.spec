@@ -20,17 +20,11 @@
 %define _conf_dir %{_sysconfdir}/supportutils-scrub
 %endif
 
-%if 0%{?suse_version} < 1300
-%define _license GPL-2.0
-%else
-%define _license GPL-2.0-only
-%endif
-
 Name:           supportutils-scrub
 Version:        1.5
 Release:        0
 Summary:        Utility to sanitize and remove sensitive data from supportconfig tarballs
-License:        %{_license}
+License:        GPL-2.0-only
 Group:          System/Management
 Url:            https://github.com/openSUSE/supportutils-scrub
 Source:         %{name}-%{version}.tar.gz
