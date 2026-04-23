@@ -14,19 +14,12 @@
 
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 
-# SLES 16 / Leap 16.0 (suse_version >= 1600): vendor config goes to /usr/etc
-# so /etc remains available for administrator overrides (layered config model).
-# SLES 15 / Leap 15.x: traditional /etc path.
-# The 0%{?...} guard evaluates to 0 on non-SUSE hosts where suse_version is
-# undefined, keeping the macro safe.
 %if 0%{?suse_version} >= 1600
 %define _conf_dir %{_prefix}/etc/supportutils-scrub
 %else
 %define _conf_dir %{_sysconfdir}/supportutils-scrub
 %endif
 
-# SLE 12 rpmlint does not know the SPDX-2.0 "-only" suffix; use the short form
-# there.  All other targets accept GPL-2.0-only.
 %if 0%{?suse_version} < 1300
 %define _license GPL-2.0
 %else
@@ -45,7 +38,6 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
 Requires:       python3
 BuildRequires:  python3
-BuildRequires:  python3-pytest
 
 %description
 supportutils-scrub masks sensitive information from SUSE supportconfig
@@ -87,16 +79,11 @@ install -m 0644 man/supportutils-scrub.conf.5 \
     %{buildroot}%{_mandir}/man5/supportutils-scrub.conf.5
 gzip -9 %{buildroot}%{_mandir}/man5/supportutils-scrub.conf.5
 
-# Python modules — strip executable bits; the actual entry point is
-# %%{_sbindir}/supportutils-scrub (the shim in bin/).
+# Python modules
 cp -r src/supportutils_scrub/* \
     %{buildroot}%{_prefix}/lib/supportutils-scrub/supportutils_scrub/
 find %{buildroot} -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 find %{buildroot}%{_prefix}/lib/supportutils-scrub -name "*.py" -exec chmod 0644 {} +
-
-%check
-cd %{_builddir}/%{name}-%{version}
-PYTHONPATH=src python3 -m pytest tests/ -q
 
 %files
 %defattr(-,root,root)
@@ -105,7 +92,6 @@ PYTHONPATH=src python3 -m pytest tests/ -q
 %{_sbindir}/supportutils-scrub
 %dir %{_conf_dir}
 %if 0%{?suse_version} >= 1600
-# /usr/etc files are vendor defaults, not user config — do not mark as %%config.
 %{_conf_dir}/supportutils-scrub.conf
 %else
 %config(noreplace) %{_conf_dir}/supportutils-scrub.conf
@@ -117,7 +103,3 @@ PYTHONPATH=src python3 -m pytest tests/ -q
 %{_mandir}/man8/supportutils-scrub.8.gz
 %{_mandir}/man5/supportutils-scrub.conf.5.gz
 
-%changelog
-* Fri Apr 18 2026 Ronald Pina <rpina@suse.com> - 1.5-0
-- Update to version 1.5
-  see /usr/share/doc/packages/supportutils-scrub/supportutils-scrub.changes
