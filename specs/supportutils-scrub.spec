@@ -81,6 +81,9 @@ gzip -9 %{buildroot}%{_mandir}/man5/supportutils-scrub.conf.5
 cp -r src/supportutils_scrub/* \
     %{buildroot}%{_prefix}/lib/supportutils-scrub/supportutils_scrub/
 find %{buildroot} -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+# Strip executable bits from all .py files — they are modules, not entry points.
+# The actual entry point is %{_sbindir}/supportutils-scrub.
+find %{buildroot}%{_prefix}/lib/supportutils-scrub -name "*.py" -exec chmod 0644 {} +
 
 %files
 %defattr(-,root,root)

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 SCRIPT_VERSION = "1.5"
 SCRIPT_DATE = "2026-04-18"
 
