@@ -14,28 +14,38 @@
 
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 
-# SLES 16 and Leap 16.0 use suse_version >= 1600.
-# On those distros vendor configuration lives under /usr/etc so that
-# /etc remains available for administrator overrides (the layered config
-# model introduced with SLES 16).  On SLES 15 / Leap 15.x the traditional
-# /etc path is used.  The 0%{?...} prefix keeps the macro safe on non-SUSE
-# build hosts where suse_version is undefined (it evaluates to 0 < 1600).
+# SLES 16 / Leap 16.0 (suse_version >= 1600): vendor config goes to /usr/etc
+# so /etc remains available for administrator overrides (layered config model).
+# SLES 15 / Leap 15.x: traditional /etc path.
+# The 0%{?...} guard evaluates to 0 on non-SUSE hosts where suse_version is
+# undefined, keeping the macro safe.
 %if 0%{?suse_version} >= 1600
 %define _conf_dir %{_prefix}/etc/supportutils-scrub
 %else
 %define _conf_dir %{_sysconfdir}/supportutils-scrub
 %endif
 
+# SLE 12 rpmlint does not know the SPDX-2.0 "-only" suffix; use the short form
+# there.  All other targets accept GPL-2.0-only.
+%if 0%{?suse_version} < 1300
+%define _license GPL-2.0
+%else
+%define _license GPL-2.0-only
+%endif
+
 Name:           supportutils-scrub
 Version:        1.5
 Release:        0
 Summary:        Utility to sanitize and remove sensitive data from supportconfig tarballs
-License:        GPL-2.0-only
+License:        %{_license}
+Group:          System/Management
 Url:            https://github.com/openSUSE/supportutils-scrub
 Source:         %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
 Requires:       python3
+BuildRequires:  python3
+BuildRequires:  python3-pytest
 
 %description
 supportutils-scrub masks sensitive information from SUSE supportconfig
@@ -77,13 +87,16 @@ install -m 0644 man/supportutils-scrub.conf.5 \
     %{buildroot}%{_mandir}/man5/supportutils-scrub.conf.5
 gzip -9 %{buildroot}%{_mandir}/man5/supportutils-scrub.conf.5
 
-# Python modules
+# Python modules — strip executable bits; the actual entry point is
+# %%{_sbindir}/supportutils-scrub (the shim in bin/).
 cp -r src/supportutils_scrub/* \
     %{buildroot}%{_prefix}/lib/supportutils-scrub/supportutils_scrub/
 find %{buildroot} -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-# Strip executable bits from all .py files — they are modules, not entry points.
-# The actual entry point is %{_sbindir}/supportutils-scrub.
 find %{buildroot}%{_prefix}/lib/supportutils-scrub -name "*.py" -exec chmod 0644 {} +
+
+%check
+cd %{_builddir}/%{name}-%{version}
+PYTHONPATH=src python3 -m pytest tests/ -q
 
 %files
 %defattr(-,root,root)
@@ -91,7 +104,12 @@ find %{buildroot}%{_prefix}/lib/supportutils-scrub -name "*.py" -exec chmod 0644
 %doc README.md
 %{_sbindir}/supportutils-scrub
 %dir %{_conf_dir}
+%if 0%{?suse_version} >= 1600
+# /usr/etc files are vendor defaults, not user config — do not mark as %%config.
+%{_conf_dir}/supportutils-scrub.conf
+%else
 %config(noreplace) %{_conf_dir}/supportutils-scrub.conf
+%endif
 %dir %{_prefix}/lib/supportutils-scrub
 %dir %{_prefix}/lib/supportutils-scrub/supportutils_scrub
 %dir %{_prefix}/lib/supportutils-scrub/supportutils_scrub/modes
@@ -100,3 +118,6 @@ find %{buildroot}%{_prefix}/lib/supportutils-scrub -name "*.py" -exec chmod 0644
 %{_mandir}/man5/supportutils-scrub.conf.5.gz
 
 %changelog
+* Fri Apr 18 2026 Ronald Pina <rpina@suse.com> - 1.5-0
+- Update to version 1.5
+  see /usr/share/doc/packages/supportutils-scrub/supportutils-scrub.changes
