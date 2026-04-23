@@ -315,51 +315,60 @@ All sensitive files (\fI*.json\fR, \fI*.json.enc\fR, \fI*_audit_*.json\fR) are w
 .SH INTEGRATION WITH SUPPORTCONFIG(8)
 This section describes the stable interface for tools and scripts that call \fBsupportutils-scrub\fR programmatically. \fBsupportconfig\fR(8) may invoke \fBsupportutils-scrub\fR after collecting its dataset when a scrub option is passed; the contract below is the one \fBsupportconfig\fR relies on and is considered stable across minor versions.
 
-.SS stdout / stderr contract
-When called with \fB\-\-quiet\fR in folder mode, the tool follows a strict two-stream contract:
-.IP \(bu 2
-\fBstdout\fR — exactly one line: the absolute path of the scrubbed output directory. Nothing else.
-.IP \(bu 2
-\fBstderr\fR — human-readable output: version line, warnings (e.g. private IP obfuscation disabled), file list, and obfuscation summary. Callers can display it, log it, or discard it.
-
-This split allows the caller to capture the output path via command substitution while still showing progress to the operator on the terminal.
-
-.SS Canonical call pattern
+.SS Calling supportconfig with automatic scrubbing
+Pass \fB\-j\fR to \fBsupportconfig\fR(8) and it invokes \fBsupportutils-scrub\fR automatically after collection.
+The scrubbed folder path is printed to stdout; everything else goes to stderr.
+.sp
 .nf
-SCRUB_ERR=$(mktemp /tmp/scrub-XXXXXX.err)
-SCRUB_OUT=$(supportutils-scrub \\
-    --quiet \\
-    $VAR_OPTION_SCRUB_OPTS \\
-    "$INPUT_DIR" 2>"$SCRUB_ERR")
-RC=$?
-cat "$SCRUB_ERR"    # show summary on terminal
-rm -f "$SCRUB_ERR"
-if (( RC == 0 || RC == 2 )); then
-    # $SCRUB_OUT is the scrubbed folder path
-    # The folder name has hostnames replaced (e.g. scc_hostname_8_...)
-    # Strip _scrubbed suffix to get the clean base name:
-    NEW_BASE=$(basename "$SCRUB_OUT" | sed 's/_scrubbed$//')
-fi
+supportconfig -j
 .fi
+.sp
+To add scrub options without changing the \fBsupportconfig\fR call, set \fBSUPPORTUTILS_SCRUB_OPTS\fR before running:
+.sp
+.nf
+export SUPPORTUTILS_SCRUB_OPTS="--verify --encrypt-mappings"
+supportconfig -j
+.fi
+.sp
+Common values for \fBSUPPORTUTILS_SCRUB_OPTS\fR:
+.TP
+\fB\-\-verify\fR
+Re-scan the scrubbed output for residual sensitive data after scrubbing. Exit code 3 if leaks are found.
+.TP
+\fB\-\-encrypt-mappings\fR
+Encrypt the mapping file with a passphrase so the real-to-fake translation cannot be read without it.
+.TP
+\fB\-\-keywords "token1,token2"\fR
+Add site-specific strings to obfuscate (project names, internal hostnames not in DNS, etc.).
+.TP
+\fB\-\-no-mappings\fR
+Do not write a mapping file at all. Use when the mapping file itself must not exist on disk.
+.sp
+If \fBsupportconfig \-j\fR is not available, call \fBsupportutils-scrub\fR directly on the collected directory:
+.sp
+.nf
+supportutils-scrub --quiet /var/log/scc_hostname_250814_1549
+.fi
+.sp
+With \fB\-\-quiet\fR the only thing written to stdout is the absolute path of the scrubbed output directory.
+Hostnames in the directory name are replaced, so \fIscc_hostname_250814_1549\fR becomes
+\fIscc_hostname_1_250814_1549_scrubbed\fR. Exit codes: 0 or 2 = success, 1 = failure, 3 = verify found leaks.
 
 .SS Output path convention
-The scrubbed output directory is always named \fI{scrubbed_input_name}_scrubbed\fR and placed alongside the input directory. Any hostname found in the input directory name is replaced with its obfuscated value. The \fI_scrubbed\fR suffix is a stable, versioned part of the interface.
-
-.SS Environment variable
-.TP
-.B SUPPORTUTILS_SCRUB_OPTS
-A space-separated list of additional options prepended to the command line before argument parsing. Useful for passing user options (e.g. \fB--verify\fR, \fB--keywords\fR, \fB--encrypt-mappings\fR) without modifying the caller's code.
+The scrubbed directory is always named \fI{input_name}_scrubbed\fR alongside the input.
+Any hostname embedded in the input name is replaced with its obfuscated value.
+The \fI_scrubbed\fR suffix is stable across versions.
 
 .SS Exit codes for callers
 .TP
 .B 0 or 2
-Scrubbing succeeded. Use the path returned on stdout.
+Success. Use the path returned on stdout.
 .TP
 .B 3
-Scrubbing succeeded but \fB\-\-verify\fR found residual data. Warn the operator; the output exists but may be incomplete.
+\fB\-\-verify\fR found residual data. Output exists but may be incomplete; warn the operator.
 .TP
 .B 1
-Failure. Do not use the output.
+Fatal error. Do not use the output.
 
 .SH DISCLAIMER
 supportutils-scrub is a best-effort obfuscation tool. It does not guarantee
