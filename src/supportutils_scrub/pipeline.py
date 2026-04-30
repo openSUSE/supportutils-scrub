@@ -172,7 +172,10 @@ def init_scrubbers(args, config, logger):
     return mappings, keyword_scrubber, ip_scrubber, mac_scrubber, ipv6_scrubber
 
 
-def scrub_name(name, hostname_dict):
+def scrub_name(name, hostname_dict, domain_dict=None):
+    if domain_dict:
+        for real, fake in sorted(domain_dict.items(), key=lambda x: len(x[0]), reverse=True):
+            name = name.replace(real, fake)
     for real, fake in sorted(hostname_dict.items(), key=lambda x: len(x[0]), reverse=True):
         name = name.replace(real, fake)
     return name
