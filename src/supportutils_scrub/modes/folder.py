@@ -104,7 +104,7 @@ def run_folder_mode(args, logger):
 
     serial_scrubber = None
     if is_sc:
-        scrubbed_path = rename_extraction_paths(scrubbed_path, hostname_dict)
+        scrubbed_path = rename_extraction_paths(scrubbed_path, hostname_dict, domain_dict=domain_dict)
         report_files = walk_supportconfig(scrubbed_path)
         serial_dict = extract_serials(report_files, mappings)
         serial_scrubber = SerialScrubber(mappings=mappings)

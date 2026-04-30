@@ -85,7 +85,7 @@ def process_one_archive(archive_path, current_mappings, args, config, keyword_sc
             additional_hostnames = re.split(r'[,\s;]+', args.hostname)
         hostname_dict = extract_hostnames(report_files, additional_hostnames, current_mappings)
 
-        clean_folder_path = rename_extraction_paths(clean_folder_path, hostname_dict)
+        clean_folder_path = rename_extraction_paths(clean_folder_path, hostname_dict, domain_dict=domain_dict)
         report_files = walk_supportconfig(clean_folder_path)
 
         serial_dict = extract_serials(report_files, current_mappings)
@@ -98,7 +98,7 @@ def process_one_archive(archive_path, current_mappings, args, config, keyword_sc
             archive_name_no_ext = archive_basename[:-7]
         else:
             archive_name_no_ext = os.path.splitext(archive_basename)[0]
-        scrubbed_archive_name = scrub_name(archive_name_no_ext, hostname_dict)
+        scrubbed_archive_name = scrub_name(archive_name_no_ext, hostname_dict, domain_dict=domain_dict)
         out_dir = getattr(args, 'output_dir', None) or archive_dir
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)

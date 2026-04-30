@@ -196,12 +196,12 @@ def dataset_paths(dataset_dir, timestamp, hostname_dict=None, input_name=None, r
     return mapping_path, audit_path, report_path
 
 
-def rename_extraction_paths(clean_folder_path, hostname_dict, rename_top=True):
+def rename_extraction_paths(clean_folder_path, hostname_dict, rename_top=True, domain_dict=None):
     if not hostname_dict:
         return clean_folder_path
     for root, dirs, _ in os.walk(clean_folder_path, topdown=True):
         for d in dirs:
-            scrubbed = scrub_name(d, hostname_dict)
+            scrubbed = scrub_name(d, hostname_dict, domain_dict=domain_dict)
             if scrubbed != d:
                 try:
                     os.rename(os.path.join(root, d), os.path.join(root, scrubbed))
@@ -211,7 +211,7 @@ def rename_extraction_paths(clean_folder_path, hostname_dict, rename_top=True):
         return clean_folder_path
     parent   = os.path.dirname(clean_folder_path)
     basename = os.path.basename(clean_folder_path)
-    scrubbed_basename = scrub_name(basename, hostname_dict)
+    scrubbed_basename = scrub_name(basename, hostname_dict, domain_dict=domain_dict)
     if scrubbed_basename != basename:
         new_path = os.path.join(parent, scrubbed_basename)
         try:
